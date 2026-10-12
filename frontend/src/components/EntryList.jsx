@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
-function formatTimestamp(raw) {
-  if (!raw) return '';
+function formatDate(rawDate) {
+  if (!rawDate) return '';
   try {
-    const d = new Date(raw);
+    const d = new Date(rawDate);
     return d.toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -12,62 +12,55 @@ function formatTimestamp(raw) {
       minute: '2-digit',
     });
   } catch {
-    return raw;
+    return rawDate;
   }
 }
 
 export default function EntryList({ entries, onSelectEntry }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTagFilter, setActiveTagFilter] = useState(null);
+  const [activeTag, setActiveTag] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
-  const handleCopySummary = (e, entry) => {
+  const handleCopy = (e, item) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(entry.summary);
-    setCopiedId(entry.id);
+    navigator.clipboard.writeText(item.summary);
+    setCopiedId(item.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleTagClick = (e, tag) => {
+  const handleTagFilter = (e, tag) => {
     e.stopPropagation();
-    if (activeTagFilter === tag) {
-      setActiveTagFilter(null);
-    } else {
-      setActiveTagFilter(tag);
-    }
+    setActiveTag(activeTag === tag ? null : tag);
   };
 
-  // Filter entries based on search and active tag
-  const filteredEntries = entries.filter((item) => {
-    const matchesTag = activeTagFilter ? item.tags.includes(activeTagFilter) : true;
+  const filtered = entries.filter((entry) => {
+    const matchTag = activeTag ? entry.tags.includes(activeTag) : true;
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return matchesTag;
+    if (!query) return matchTag;
 
-    const matchesQuery =
-      item.summary.toLowerCase().includes(query) ||
-      item.original_text.toLowerCase().includes(query) ||
-      item.tags.some((t) => t.toLowerCase().includes(query));
+    const matchQuery =
+      entry.summary.toLowerCase().includes(query) ||
+      entry.original_text.toLowerCase().includes(query) ||
+      entry.tags.some((t) => t.toLowerCase().includes(query));
 
-    return matchesTag && matchesQuery;
+    return matchTag && matchQuery;
   });
 
   return (
     <section>
-      <div className="feed-header">
-        <div className="feed-header-left">
-          <h2 className="feed-title">Saved Entries</h2>
-          <span className="feed-count">{filteredEntries.length} of {entries.length}</span>
+      <div className="entries-header">
+        <div className="entries-header-title">
+          <h2 className="entries-title">Saved Entries</h2>
+          <span className="entries-badge">
+            {filtered.length} of {entries.length}
+          </span>
         </div>
 
-        <div className="filter-search-box">
-          {activeTagFilter && (
-            <div className="active-filter-pill">
-              <span>#{activeTagFilter}</span>
-              <button
-                className="filter-clear-btn"
-                onClick={() => setActiveTagFilter(null)}
-                title="Clear tag filter"
-              >
+        <div className="search-box-wrapper">
+          {activeTag && (
+            <div className="filter-tag-pill">
+              <span>#{activeTag}</span>
+              <button onClick={() => setActiveTag(null)} title="Clear filter">
                 &times;
               </button>
             </div>
@@ -84,41 +77,39 @@ export default function EntryList({ entries, onSelectEntry }) {
       </div>
 
       {entries.length === 0 ? (
-        <div className="empty-placeholder">
-          <div className="empty-icon">📄</div>
-          <h3>No records saved yet</h3>
-          <p>Submit text using the editor above to generate and persist your first summary.</p>
+        <div className="empty-box">
+          <div className="empty-box-icon">📝</div>
+          <h3>No entries saved yet</h3>
+          <p>Submit text using the form above to generate your first AI summary.</p>
         </div>
-      ) : filteredEntries.length === 0 ? (
-        <div className="empty-placeholder">
-          <h3>No matching entries found</h3>
-          <p>Try adjusting your search query or clear the active tag filter.</p>
+      ) : filtered.length === 0 ? (
+        <div className="empty-box">
+          <h3>No matching results</h3>
+          <p>Try searching with another keyword or clear your active tag filter.</p>
         </div>
       ) : (
-        <div className="feed-grid">
-          {filteredEntries.map((entry) => (
+        <div className="entry-cards-list">
+          {filtered.map((item) => (
             <article
-              key={entry.id}
-              className="feed-card"
-              onClick={() => onSelectEntry(entry)}
+              key={item.id}
+              className="entry-item-card"
+              onClick={() => onSelectEntry(item)}
             >
-              <div className="card-top">
-                <div className="card-identifier">
-                  <span className="id-badge">#{entry.id}</span>
-                  <span className="card-time">{formatTimestamp(entry.created_at)}</span>
-                </div>
+              <div className="entry-card-meta">
+                <span className="entry-id-tag">#{item.id}</span>
+                <span className="entry-date-text">{formatDate(item.created_at)}</span>
               </div>
 
-              <div className="card-summary">
-                <p>{entry.summary}</p>
+              <div className="entry-summary-text">
+                <p>{item.summary}</p>
               </div>
 
-              <div className="card-tags">
-                {entry.tags.map((tag, idx) => (
+              <div className="entry-tags-row">
+                {item.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className={`tag-badge ${activeTagFilter === tag ? 'active' : ''}`}
-                    onClick={(e) => handleTagClick(e, tag)}
+                    className={`tag-chip ${activeTag === tag ? 'active' : ''}`}
+                    onClick={(e) => handleTagFilter(e, tag)}
                     title={`Filter by #${tag}`}
                   >
                     #{tag}
@@ -126,16 +117,16 @@ export default function EntryList({ entries, onSelectEntry }) {
                 ))}
               </div>
 
-              <div className="card-bottom">
+              <div className="entry-card-footer">
                 <button
                   type="button"
-                  className="copy-btn"
-                  onClick={(e) => handleCopySummary(e, entry)}
+                  className="btn-inline-action"
+                  onClick={(e) => handleCopy(e, item)}
                 >
-                  {copiedId === entry.id ? '✓ Copied' : '📋 Copy summary'}
+                  {copiedId === item.id ? '✓ Copied' : '📋 Copy summary'}
                 </button>
-                <span className="view-action">
-                  Inspect &rarr;
+                <span className="inspect-link">
+                  View details &rarr;
                 </span>
               </div>
             </article>

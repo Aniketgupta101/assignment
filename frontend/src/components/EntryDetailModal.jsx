@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-function formatTimestamp(raw) {
+function formatDate(raw) {
   if (!raw) return '';
   try {
     const d = new Date(raw);
@@ -17,11 +17,11 @@ export default function EntryDetailModal({ entry, onClose }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const onKeyDown = (e) => {
+    const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
   if (!entry) return null;
@@ -33,24 +33,24 @@ export default function EntryDetailModal({ entry, onClose }) {
   };
 
   return (
-    <div className="modal-layer" onClick={onClose}>
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-top">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header-bar">
           <div>
             <h3>Entry #{entry.id}</h3>
-            <div className="modal-date">Saved on {formatTimestamp(entry.created_at)}</div>
+            <div className="modal-header-date">Saved on {formatDate(entry.created_at)}</div>
           </div>
-          <button className="modal-close-icon" onClick={onClose} aria-label="Close modal">
+          <button className="modal-close-button" onClick={onClose} aria-label="Close modal">
             &times;
           </button>
         </div>
 
-        <div className="modal-content-area">
+        <div className="modal-scroll-area">
           <div>
-            <span className="section-label">Categorization Tags</span>
-            <div className="card-tags">
+            <span className="detail-label-heading">Tags</span>
+            <div className="entry-tags-row">
               {entry.tags.map((tag, idx) => (
-                <span key={idx} className="tag-badge active">
+                <span key={idx} className="tag-chip active">
                   #{tag}
                 </span>
               ))}
@@ -58,26 +58,26 @@ export default function EntryDetailModal({ entry, onClose }) {
           </div>
 
           <div>
-            <span className="section-label">Generated Summary</span>
-            <div className="summary-callout">
+            <span className="detail-label-heading">AI Generated Summary</span>
+            <div className="modal-summary-box">
               <p>{entry.summary}</p>
             </div>
           </div>
 
           <div>
-            <span className="section-label">Original Source Text</span>
-            <div className="transcript-viewport">
+            <span className="detail-label-heading">Original Submitted Text</span>
+            <div className="modal-source-text">
               <pre>{entry.original_text}</pre>
             </div>
           </div>
         </div>
 
-        <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={handleCopy}>
-            {copied ? '✓ Summary Copied' : '📋 Copy Summary'}
+        <div className="modal-footer-bar">
+          <button type="button" className="btn btn-secondary" onClick={handleCopy}>
+            {copied ? '✓ Copied' : '📋 Copy Summary'}
           </button>
           <button type="button" className="btn btn-primary" onClick={onClose}>
-            Done
+            Close
           </button>
         </div>
       </div>

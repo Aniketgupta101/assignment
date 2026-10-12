@@ -9,7 +9,7 @@ export default function App() {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [backendHealth, setBackendHealth] = useState({ online: false, provider: 'checking...' });
+  const [isOnline, setIsOnline] = useState(true);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -19,11 +19,7 @@ export default function App() {
 
   const verifyHealth = async () => {
     const res = await checkBackendHealth();
-    if (res.healthy) {
-      setBackendHealth({ online: true, provider: res.configured_provider || 'active' });
-    } else {
-      setBackendHealth({ online: false, provider: 'offline' });
-    }
+    setIsOnline(res.healthy);
   };
 
   const loadSavedEntries = async () => {
@@ -41,7 +37,7 @@ export default function App() {
     try {
       const newEntry = await createEntry(text);
       setEntries((prev) => [newEntry, ...prev]);
-      setToast('Summary successfully generated and saved to database.');
+      setToast('Summary successfully generated and saved.');
       setTimeout(() => setToast(null), 4000);
     } catch (err) {
       setError(err.message || 'Failed to process text with AI provider.');
@@ -51,31 +47,24 @@ export default function App() {
   };
 
   return (
-    <div className="app-wrapper">
-      {/* Top Header */}
+    <div className="app-container">
+      {/* Header */}
       <header className="app-header">
-        <div className="header-left">
-          <div className="app-badge-icon">AI</div>
-          <div>
-            <h1 className="app-title">Content Assistant</h1>
-            <p className="app-subtitle">Automated Summarization & Semantic Tagging</p>
-          </div>
+        <div className="brand-section">
+          <h1 className="brand-title">AI Content Assistant</h1>
+          <p className="brand-description">Turn long text, meeting notes, or memos into concise summaries and tags</p>
         </div>
 
-        <div className="engine-pill">
-          <span className={`status-dot ${backendHealth.online ? '' : 'offline'}`}></span>
-          <span className="engine-name">
-            {backendHealth.online
-              ? `Engine: ${backendHealth.provider}`
-              : 'Backend Disconnected'}
-          </span>
+        <div className="system-status">
+          <span className={`status-indicator-dot ${isOnline ? '' : 'offline'}`}></span>
+          <span>{isOnline ? 'Online' : 'Offline'}</span>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main>
         {toast && (
-          <div className="toast-banner">
+          <div className="notification-banner">
             <span>✓</span>
             <span>{toast}</span>
           </div>
@@ -94,7 +83,7 @@ export default function App() {
         />
       </main>
 
-      {/* Inspector Modal */}
+      {/* Detail Modal */}
       {selectedEntry && (
         <EntryDetailModal
           entry={selectedEntry}
@@ -104,7 +93,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="app-footer">
-        <p>IIFL Finance &bull; Full Stack + Applied AI Screening Prototype</p>
+        <p>AI Content Assistant &bull; Built with FastAPI, SQLite & React</p>
       </footer>
     </div>
   );

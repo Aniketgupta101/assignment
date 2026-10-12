@@ -140,30 +140,50 @@ async def _generate_with_openai(api_key: str, text: str) -> Dict[str, Any]:
 
 
 async def _generate_with_groq(api_key: str, text: str) -> Dict[str, Any]:
-    """Call Groq API using OpenAI-compatible interface."""
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-    try:
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.groq.com/openai/v1",
-            timeout=20.0,
-        )
-        completion = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": USER_PROMPT_TEMPLATE.format(text=text)},
-            ],
-            temperature=0.2,
-            response_format={"type": "json_object"},
-        )
-        raw_text = completion.choices[0].message.content or ""
-        return _clean_and_parse_json(raw_text)
-    except Exception as err:
-        error_msg = str(err)
-        if "timeout" in error_msg.lower():
-            raise AIServiceError("Request to Groq API timed out after 20 seconds.", status_code=504)
-        raise AIServiceError(f"Groq API call failed: {error_msg}", status_code=502)
+    """Call Groq API using OpenAI-compatible interface with fallback models."""
+    configured_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip()
+    candidate_models = [
+        configured_model,
+        "openai/gpt-oss-20b",
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-120b",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+    ]
+    # Remove duplicates preserving order
+    seen = set()
+    models_to_try = [m for m in candidate_models if m and not (m in seen or seen.add(m))]
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.groq.com/openai/v1",
+        timeout=25.0,
+    )
+
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            completion = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": USER_PROMPT_TEMPLATE.format(text=text)},
+                ],
+                temperature=0.2,
+                response_format={"type": "json_object"},
+            )
+            raw_text = completion.choices[0].message.content or ""
+            return _clean_and_parse_json(raw_text)
+        except Exception as err:
+            err_str = str(err)
+            if "model_not_found" in err_str or "does not exist" in err_str:
+                last_error = err
+                continue  # Try next model
+            if "timeout" in err_str.lower():
+                raise AIServiceError("Request to Groq API timed out after 25 seconds.", status_code=504)
+            raise AIServiceError(f"Groq API call failed: {err_str}", status_code=502)
+
+    raise AIServiceError(f"Groq API call failed: None of the candidate models were available. Last error: {str(last_error)}", status_code=502)
 
 
 async def generate_summary_and_tags(text: str) -> AIAnalysisResult:
@@ -171,7 +191,7 @@ async def generate_summary_and_tags(text: str) -> AIAnalysisResult:
     Main entry point for AI generation.
     Checks for configured keys: Groq, Gemini, or OpenAI.
     """
-    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    groq_key = (os.getenv("GROQ_API_KEY") or os.getenv("GROQ_API_KEYS") or "").strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
 
