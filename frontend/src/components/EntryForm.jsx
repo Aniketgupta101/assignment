@@ -1,101 +1,100 @@
 import React, { useState } from 'react';
 
-const SAMPLE_TEXTS = [
+const PRESET_EXAMPLES = [
   {
-    label: 'Meeting Transcript',
-    text: `Team sync on Q4 roadmap: We discussed migrating our legacy microservices to a unified API gateway. Priya highlighted that latency improved by 40% in initial benchmarks. Next steps: Rahul will complete the load testing by Thursday, and documentation will be shared with the DevOps team before Friday release.`,
+    title: 'Meeting Sync',
+    snippet: `Engineering sync on Q4 priorities: We agreed to migrate existing reporting endpoints to background workers. Priya verified that query latency dropped by 38% after indexing the transactions table. Follow-up: Vikram will finalize load testing by Wednesday, and updated deployment runbooks will be shared with the operations team before Friday's maintenance window.`,
   },
   {
-    label: 'Financial Memo',
-    text: `IIFL Finance portfolio risk evaluation: Retail lending saw steady credit growth of 14% year-over-year, driven by secured gold loans and affordable housing segments. Non-performing assets (NPA) remained controlled at 1.8%. Liquidity reserves remain robust heading into the next fiscal quarter.`,
+    title: 'Credit Risk Analysis',
+    snippet: `IIFL portfolio quarterly review: Retail lending assets expanded by 14% year-over-year, spearheaded by secured gold loans and affordable housing advances. Gross NPA ratio contracted to 1.82%, reflecting improved underwriting quality. Liquidity buffers and capital adequacy ratios remain comfortable well above statutory guidelines.`,
   },
   {
-    label: 'Engineering Architecture',
-    text: `Proposal for resilient AI service integration: All outgoing calls to external LLM providers must enforce a strict 15-second client timeout with exponential backoff on 5xx errors. Sensitive customer identifiers must be redacted prior to prompt serialization to comply with internal privacy standards.`,
+    title: 'System Architecture',
+    snippet: `Proposal for resilient LLM client integration: All egress HTTP calls to external AI providers must enforce a strict 20-second connection timeout, exponential backoff with jitter on 5xx responses, and schema normalization. Sensitive customer identifiers (PAN, account numbers) must be masked prior to transport to uphold financial regulatory compliance.`,
   },
 ];
 
 export default function EntryForm({ onSubmit, isLoading, error, onClearError }) {
   const [text, setText] = useState('');
-  const maxLength = 10000;
+  const maxLimit = 10000;
 
-  const handleSubmit = (e) => {
+  const handleFormSubmit = (e) => {
     e.preventDefault();
-    const trimmed = text.trim();
-    if (!trimmed || isLoading) return;
-    onSubmit(trimmed);
+    const clean = text.trim();
+    if (!clean || isLoading) return;
+    onSubmit(clean);
   };
 
-  const handleClear = () => {
+  const handleReset = () => {
     setText('');
     if (onClearError) onClearError();
   };
 
-  const loadSample = (sampleText) => {
+  const applyExample = (sampleText) => {
     setText(sampleText);
     if (onClearError) onClearError();
   };
 
   return (
-    <section className="card form-card">
-      <div className="card-header">
-        <h2>Submit Content for AI Analysis</h2>
-        <p className="subtitle">
-          Paste any meeting transcript, article draft, or note. The AI will generate a concise summary and 3 relevant tags.
+    <section className="panel">
+      <div className="panel-header">
+        <h2 className="panel-title">Analyze Document or Transcript</h2>
+        <p className="panel-desc">
+          Paste notes, meeting transcripts, or articles. The assistant extracts a concise summary and exactly three structured tags.
         </p>
       </div>
 
-      <div className="sample-chips">
-        <span className="sample-label">Try a sample:</span>
-        {SAMPLE_TEXTS.map((sample, idx) => (
+      <div className="sample-bar">
+        <span className="sample-bar-label">Examples</span>
+        {PRESET_EXAMPLES.map((item, idx) => (
           <button
             key={idx}
             type="button"
-            className="chip-btn"
-            onClick={() => loadSample(sample.text)}
+            className="sample-button"
+            onClick={() => applyExample(item.snippet)}
             disabled={isLoading}
           >
-            {sample.label}
+            {item.title}
           </button>
         ))}
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="textarea-wrapper">
+      <form onSubmit={handleFormSubmit}>
+        <div className="textarea-container">
           <textarea
-            className="content-textarea"
+            className="editor-textarea"
             rows="6"
-            placeholder="Type or paste your text here (e.g., notes, article draft, customer feedback)..."
+            placeholder="Type or paste your raw content here..."
             value={text}
             onChange={(e) => {
               setText(e.target.value);
               if (error && onClearError) onClearError();
             }}
             disabled={isLoading}
-            maxLength={maxLength}
+            maxLength={maxLimit}
           />
-          <div className="textarea-footer">
-            <span className={`char-counter ${text.length > maxLength * 0.9 ? 'warning' : ''}`}>
-              {text.length.toLocaleString()} / {maxLength.toLocaleString()} characters
+          <div className="editor-meta">
+            <span className={`char-limit ${text.length > maxLimit * 0.9 ? 'limit-warn' : ''}`}>
+              {text.length.toLocaleString()} / {maxLimit.toLocaleString()} characters
             </span>
           </div>
         </div>
 
         {error && (
-          <div className="error-alert">
-            <div className="error-icon">⚠️</div>
-            <div className="error-content">
-              <strong>Processing Failed</strong>
-              <p>{error}</p>
+          <div className="error-banner">
+            <div>
+              <strong>Processing Error</strong>
+              <div>{error}</div>
             </div>
           </div>
         )}
 
-        <div className="form-actions">
+        <div className="panel-actions">
           <button
             type="button"
-            className="btn btn-secondary"
-            onClick={handleClear}
+            className="btn btn-ghost"
+            onClick={handleReset}
             disabled={isLoading || !text}
           >
             Clear
@@ -106,12 +105,12 @@ export default function EntryForm({ onSubmit, isLoading, error, onClearError }) 
             disabled={isLoading || !text.trim()}
           >
             {isLoading ? (
-              <span className="spinner-wrapper">
-                <span className="spinner"></span>
+              <>
+                <span className="loader-spinner"></span>
                 <span>Generating Summary...</span>
-              </span>
+              </>
             ) : (
-              'Analyze & Save Entry'
+              'Generate Summary & Tags'
             )}
           </button>
         </div>

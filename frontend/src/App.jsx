@@ -9,25 +9,24 @@ export default function App() {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [backendStatus, setBackendStatus] = useState({ online: false, provider: 'checking' });
-  const [toastMessage, setToastMessage] = useState(null);
+  const [backendHealth, setBackendHealth] = useState({ online: false, provider: 'checking...' });
+  const [toast, setToast] = useState(null);
 
-  // Load initial entries and check health
   useEffect(() => {
-    loadEntries();
-    checkHealth();
+    loadSavedEntries();
+    verifyHealth();
   }, []);
 
-  const checkHealth = async () => {
-    const health = await checkBackendHealth();
-    if (health.healthy) {
-      setBackendStatus({ online: true, provider: health.configured_provider || 'configured' });
+  const verifyHealth = async () => {
+    const res = await checkBackendHealth();
+    if (res.healthy) {
+      setBackendHealth({ online: true, provider: res.configured_provider || 'active' });
     } else {
-      setBackendStatus({ online: false, provider: 'offline' });
+      setBackendHealth({ online: false, provider: 'offline' });
     }
   };
 
-  const loadEntries = async () => {
+  const loadSavedEntries = async () => {
     try {
       const data = await fetchEntries();
       setEntries(data);
@@ -36,53 +35,54 @@ export default function App() {
     }
   };
 
-  const handleSubmit = async (text) => {
+  const handleEntrySubmit = async (text) => {
     setIsLoading(true);
     setError(null);
     try {
       const newEntry = await createEntry(text);
       setEntries((prev) => [newEntry, ...prev]);
-      setToastMessage('Summary generated & saved to database!');
-      setTimeout(() => setToastMessage(null), 4000);
+      setToast('Summary successfully generated and saved to database.');
+      setTimeout(() => setToast(null), 4000);
     } catch (err) {
-      setError(err.message || 'Something went wrong while communicating with the AI service.');
+      setError(err.message || 'Failed to process text with AI provider.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="app-container">
-      {/* Navigation Header */}
-      <header className="navbar">
-        <div className="navbar-brand">
-          <span className="brand-logo">✨</span>
+    <div className="app-wrapper">
+      {/* Top Header */}
+      <header className="app-header">
+        <div className="header-left">
+          <div className="app-badge-icon">AI</div>
           <div>
-            <h1 className="brand-title">AI Content Assistant</h1>
-            <p className="brand-subtitle">Automated Summaries & Tagging</p>
+            <h1 className="app-title">Content Assistant</h1>
+            <p className="app-subtitle">Automated Summarization & Semantic Tagging</p>
           </div>
         </div>
 
-        <div className="status-indicator">
-          <span className={`status-dot ${backendStatus.online ? 'online' : 'offline'}`}></span>
-          <span className="status-text">
-            {backendStatus.online
-              ? `Backend Active (${backendStatus.provider})`
-              : 'Backend Offline'}
+        <div className="engine-pill">
+          <span className={`status-dot ${backendHealth.online ? '' : 'offline'}`}></span>
+          <span className="engine-name">
+            {backendHealth.online
+              ? `Engine: ${backendHealth.provider}`
+              : 'Backend Disconnected'}
           </span>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="main-content">
-        {toastMessage && (
-          <div className="toast-success">
-            <span>✅ {toastMessage}</span>
+      {/* Main Content */}
+      <main>
+        {toast && (
+          <div className="toast-banner">
+            <span>✓</span>
+            <span>{toast}</span>
           </div>
         )}
 
         <EntryForm
-          onSubmit={handleSubmit}
+          onSubmit={handleEntrySubmit}
           isLoading={isLoading}
           error={error}
           onClearError={() => setError(null)}
@@ -94,7 +94,7 @@ export default function App() {
         />
       </main>
 
-      {/* Detail View Modal */}
+      {/* Inspector Modal */}
       {selectedEntry && (
         <EntryDetailModal
           entry={selectedEntry}
@@ -103,8 +103,8 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="footer">
-        <p>AI Content Assistant &bull; Full Stack + Applied AI prototype</p>
+      <footer className="app-footer">
+        <p>IIFL Finance &bull; Full Stack + Applied AI Screening Prototype</p>
       </footer>
     </div>
   );

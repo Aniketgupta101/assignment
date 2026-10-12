@@ -48,11 +48,21 @@ app.add_middleware(
 
 @app.get("/health", tags=["System"])
 def health_check():
+    has_groq = bool(os.getenv("GROQ_API_KEY", "").strip())
     has_gemini = bool(os.getenv("GEMINI_API_KEY", "").strip())
     has_openai = bool(os.getenv("OPENAI_API_KEY", "").strip())
+    
+    provider = "none"
+    if has_groq:
+        provider = f"groq ({os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')})"
+    elif has_gemini:
+        provider = f"gemini ({os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')})"
+    elif has_openai:
+        provider = f"openai ({os.getenv('OPENAI_MODEL', 'gpt-4o-mini')})"
+
     return {
         "status": "healthy",
-        "configured_provider": "gemini" if has_gemini else ("openai" if has_openai else "none"),
+        "configured_provider": provider,
     }
 
 

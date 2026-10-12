@@ -139,21 +139,51 @@ async def _generate_with_openai(api_key: str, text: str) -> Dict[str, Any]:
         raise AIServiceError(f"OpenAI API call failed: {error_msg}", status_code=502)
 
 
+async def _generate_with_groq(api_key: str, text: str) -> Dict[str, Any]:
+    """Call Groq API using OpenAI-compatible interface."""
+    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    try:
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+            timeout=20.0,
+        )
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": USER_PROMPT_TEMPLATE.format(text=text)},
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+        )
+        raw_text = completion.choices[0].message.content or ""
+        return _clean_and_parse_json(raw_text)
+    except Exception as err:
+        error_msg = str(err)
+        if "timeout" in error_msg.lower():
+            raise AIServiceError("Request to Groq API timed out after 20 seconds.", status_code=504)
+        raise AIServiceError(f"Groq API call failed: {error_msg}", status_code=502)
+
+
 async def generate_summary_and_tags(text: str) -> AIAnalysisResult:
     """
     Main entry point for AI generation.
-    Picks either Gemini or OpenAI depending on configured environment keys.
+    Checks for configured keys: Groq, Gemini, or OpenAI.
     """
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
     openai_key = os.getenv("OPENAI_API_KEY", "").strip()
 
-    if gemini_key:
+    if groq_key:
+        result_dict = await _generate_with_groq(groq_key, text)
+    elif gemini_key:
         result_dict = await _generate_with_gemini(gemini_key, text)
     elif openai_key:
         result_dict = await _generate_with_openai(openai_key, text)
     else:
         raise AIServiceError(
-            "No AI API key found. Please set GEMINI_API_KEY or OPENAI_API_KEY in your .env file.",
+            "No AI API key found. Please configure GROQ_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY in your backend/.env file.",
             status_code=500,
         )
 
